@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "resident"] },
+        "residentId": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Resident": {
+      "title": "Resident",
+      "description": "Resident details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "block": { "type": "string" },
+        "houseNumber": { "type": "string" },
+        "phone": { "type": "string" },
+        "joinDate": { "type": "string" }
+      },
+      "required": ["id", "name", "block", "houseNumber", "phone", "joinDate"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Payment record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "residentId": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "month": { "type": "number" },
+        "year": { "type": "number" }
+      },
+      "required": ["id", "residentId", "amount", "date", "month", "year"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/residents/{residentId}": {
+      "schema": { "$ref": "#/entities/Resident" },
+      "description": "Residents in the community"
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Payments made by residents"
+    }
+  }
+}

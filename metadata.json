@@ -1,0 +1,6 @@
+{
+  "name": "Grand Hannan Manajemen Iuran",
+  "description": "Sistem informasi berbasis web untuk pencatatan, penagihan, dan laporan iuran warga perumahan secara otomatis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
