@@ -1,7 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  updateDoc, 
+  deleteDoc, 
+  onSnapshot 
+} from 'firebase/firestore';
 import { Resident, Payment, AppUser, AppNotification, Expense, BankAccount } from './types';
 import { initialResidents, initialPayments } from './data';
 import { generateId } from './utils';
+import { db, handleFirestoreError, OperationType } from './firebase';
 
 interface AppContextType {
   currentUser: AppUser | null;
@@ -30,186 +41,386 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   
-  const [residents, setResidents] = useState<Resident[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [bankAccount, setBankAccount] = useState<BankAccount>({
-    bankName: 'BCA',
-    accountNumber: '1234 5678 90',
-    accountName: 'Paguyuban Grand Hannan'
+  // Initialize with cached localStorage or empty array while Firestore streams in
+  const [residents, setResidents] = useState<Resident[]>(() => {
+    try {
+      const stored = localStorage.getItem('app_residents');
+      return stored ? JSON.parse(stored) : initialResidents;
+    } catch {
+      return initialResidents;
+    }
   });
 
-  // Load initial data
-  useEffect(() => {
-    const loadData = () => {
-      // 1. Enforce only 1 official admin account: ID: admin, Password: admin99
-      const storedUsers = localStorage.getItem('app_users');
-      let usersList: any[] = [];
-      try {
-        usersList = storedUsers ? JSON.parse(storedUsers) : [];
-      } catch {
-        usersList = [];
-      }
+  const [payments, setPayments] = useState<Payment[]>(() => {
+    try {
+      const stored = localStorage.getItem('app_payments');
+      return stored ? JSON.parse(stored) : initialPayments;
+    } catch {
+      return initialPayments;
+    }
+  });
 
-      // Keep only resident accounts and replace any admin with the ONE official admin
-      const nonAdminUsers = usersList.filter((u: any) => u.role !== 'admin' && u.email?.toLowerCase() !== 'admin');
-      const officialAdmin = {
-        uid: 'admin_uid',
-        email: 'admin',
-        password: 'admin99',
-        role: 'admin' as const
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    try {
+      const stored = localStorage.getItem('app_expenses');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    try {
+      const stored = localStorage.getItem('app_notifications');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [bankAccount, setBankAccount] = useState<BankAccount>(() => {
+    try {
+      const stored = localStorage.getItem('app_bank_account');
+      return stored ? JSON.parse(stored) : {
+        bankName: 'BCA',
+        accountNumber: '1234 5678 90',
+        accountName: 'Paguyuban Grand Hannan'
       };
-      
-      const finalizedUsers = [officialAdmin, ...nonAdminUsers];
-      localStorage.setItem('app_users', JSON.stringify(finalizedUsers));
+    } catch {
+      return {
+        bankName: 'BCA',
+        accountNumber: '1234 5678 90',
+        accountName: 'Paguyuban Grand Hannan'
+      };
+    }
+  });
 
-      // 2. Load Residents
-      const storedResidents = localStorage.getItem('app_residents');
-      if (storedResidents) {
-        setResidents(JSON.parse(storedResidents));
-      } else {
-        setResidents(initialResidents);
-        localStorage.setItem('app_residents', JSON.stringify(initialResidents));
-      }
-
-      // 3. Load Payments
-      const storedPayments = localStorage.getItem('app_payments');
-      if (storedPayments) {
-        setPayments(JSON.parse(storedPayments));
-      } else {
-        setPayments(initialPayments);
-        localStorage.setItem('app_payments', JSON.stringify(initialPayments));
-      }
-
-      const storedExpenses = localStorage.getItem('app_expenses');
-      if (storedExpenses) setExpenses(JSON.parse(storedExpenses));
-
-      const storedNotifications = localStorage.getItem('app_notifications');
-      if (storedNotifications) setNotifications(JSON.parse(storedNotifications));
-
-      const storedBank = localStorage.getItem('app_bank_account');
-      if (storedBank) setBankAccount(JSON.parse(storedBank));
-
-      // Check current session
+  // Check local session
+  useEffect(() => {
+    try {
       const session = localStorage.getItem('app_session');
       if (session) {
         setCurrentUser(JSON.parse(session));
       }
+    } catch (e) {
+      console.error('Error loading session:', e);
+    } finally {
       setIsLoadingAuth(false);
-    };
-
-    loadData();
+    }
   }, []);
 
-  // Save data on change
+  // Ensure Admin and Initial Data in Firestore
   useEffect(() => {
-    if (!isLoadingAuth) {
-      localStorage.setItem('app_residents', JSON.stringify(residents));
-    }
-  }, [residents, isLoadingAuth]);
+    const initializeCloudData = async () => {
+      try {
+        // 1. Ensure official Admin exists in cloud Firestore
+        const adminDocRef = doc(db, 'users', 'admin_uid');
+        const adminSnap = await getDoc(adminDocRef);
+        if (!adminSnap.exists()) {
+          await setDoc(adminDocRef, {
+            uid: 'admin_uid',
+            email: 'admin',
+            password: 'admin99',
+            role: 'admin'
+          });
+        }
 
+        // 2. Check if residents collection in Firestore has data; if empty, seed initialResidents
+        const resColRef = collection(db, 'residents');
+        const resSnap = await getDocs(resColRef);
+        if (resSnap.empty) {
+          for (const res of initialResidents) {
+            await setDoc(doc(db, 'residents', res.id), res);
+          }
+        }
+
+        // 3. Check if payments collection in Firestore has data; if empty, seed initialPayments
+        const payColRef = collection(db, 'payments');
+        const paySnap = await getDocs(payColRef);
+        if (paySnap.empty) {
+          for (const pay of initialPayments) {
+            await setDoc(doc(db, 'payments', pay.id), pay);
+          }
+        }
+
+        // 4. Ensure bankAccount exists in Firestore
+        const bankDocRef = doc(db, 'settings', 'bankAccount');
+        const bankSnap = await getDoc(bankDocRef);
+        if (!bankSnap.exists()) {
+          await setDoc(bankDocRef, {
+            bankName: 'BCA',
+            accountNumber: '1234 5678 90',
+            accountName: 'Paguyuban Grand Hannan'
+          });
+        }
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, 'init_seed');
+      }
+    };
+
+    initializeCloudData();
+  }, []);
+
+  // Real-time Firestore Listeners (Live Auto-Sync across all phones and devices)
   useEffect(() => {
-    if (!isLoadingAuth) {
-      localStorage.setItem('app_payments', JSON.stringify(payments));
-    }
-  }, [payments, isLoadingAuth]);
+    // 1. Listen to Residents
+    const unsubResidents = onSnapshot(
+      collection(db, 'residents'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const cloudResidents: Resident[] = [];
+          snapshot.forEach((d) => {
+            cloudResidents.push(d.data() as Resident);
+          });
+          setResidents(cloudResidents);
+          localStorage.setItem('app_residents', JSON.stringify(cloudResidents));
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'residents');
+      }
+    );
 
-  useEffect(() => {
-    if (!isLoadingAuth) {
-      localStorage.setItem('app_expenses', JSON.stringify(expenses));
-    }
-  }, [expenses, isLoadingAuth]);
+    // 2. Listen to Payments
+    const unsubPayments = onSnapshot(
+      collection(db, 'payments'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const cloudPayments: Payment[] = [];
+          snapshot.forEach((d) => {
+            cloudPayments.push(d.data() as Payment);
+          });
+          setPayments(cloudPayments);
+          localStorage.setItem('app_payments', JSON.stringify(cloudPayments));
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'payments');
+      }
+    );
 
-  useEffect(() => {
-    if (!isLoadingAuth) {
-      localStorage.setItem('app_notifications', JSON.stringify(notifications));
-    }
-  }, [notifications, isLoadingAuth]);
+    // 3. Listen to Expenses
+    const unsubExpenses = onSnapshot(
+      collection(db, 'expenses'),
+      (snapshot) => {
+        const cloudExpenses: Expense[] = [];
+        snapshot.forEach((d) => {
+          cloudExpenses.push(d.data() as Expense);
+        });
+        setExpenses(cloudExpenses);
+        localStorage.setItem('app_expenses', JSON.stringify(cloudExpenses));
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'expenses');
+      }
+    );
 
-  useEffect(() => {
-    if (!isLoadingAuth) {
-      localStorage.setItem('app_bank_account', JSON.stringify(bankAccount));
-    }
-  }, [bankAccount, isLoadingAuth]);
+    // 4. Listen to Notifications
+    const unsubNotifs = onSnapshot(
+      collection(db, 'notifications'),
+      (snapshot) => {
+        const cloudNotifs: AppNotification[] = [];
+        snapshot.forEach((d) => {
+          cloudNotifs.push(d.data() as AppNotification);
+        });
+        // Sort newest first
+        cloudNotifs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setNotifications(cloudNotifs);
+        localStorage.setItem('app_notifications', JSON.stringify(cloudNotifs));
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'notifications');
+      }
+    );
 
+    // 5. Listen to Bank Account Settings
+    const unsubBank = onSnapshot(
+      doc(db, 'settings', 'bankAccount'),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const bankData = snapshot.data() as BankAccount;
+          setBankAccount(bankData);
+          localStorage.setItem('app_bank_account', JSON.stringify(bankData));
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, 'settings/bankAccount');
+      }
+    );
+
+    return () => {
+      unsubResidents();
+      unsubPayments();
+      unsubExpenses();
+      unsubNotifs();
+      unsubBank();
+    };
+  }, []);
+
+  // Actions with Cloud Persistence & Auto-Sync
   const addResident = async (resident: Resident, idLogin?: string, password?: string) => {
     if (currentUser?.role !== 'admin') return;
 
-    if (idLogin && password) {
-      const users = JSON.parse(localStorage.getItem('app_users') || '[]');
-      
-      // Check if ID already exists
-      if (users.some((u: any) => u.email === idLogin)) {
-        throw new Error("ID Pengguna sudah terdaftar.");
+    try {
+      if (idLogin && password) {
+        const cleanedId = idLogin.trim();
+        // Check if ID exists in Firestore users
+        const usersSnap = await getDocs(collection(db, 'users'));
+        let exists = false;
+        usersSnap.forEach((u) => {
+          const data = u.data();
+          if (data.email?.toLowerCase() === cleanedId.toLowerCase() || data.uid === cleanedId) {
+            exists = true;
+          }
+        });
+
+        if (exists) {
+          throw new Error("ID Pengguna sudah terdaftar di sistem.");
+        }
+
+        const newUid = `u_${generateId()}`;
+        const newUserData = {
+          uid: newUid,
+          email: cleanedId,
+          password: password,
+          role: 'resident',
+          residentId: resident.id
+        };
+
+        // Save user to cloud Firestore for cross-device login
+        await setDoc(doc(db, 'users', newUid), newUserData);
+        resident.userId = newUid;
       }
 
-      const newUid = `u_${generateId()}`;
-      users.push({
-        uid: newUid,
-        email: idLogin,
-        password: password,
-        role: 'resident',
-        residentId: resident.id
+      // Save resident to cloud Firestore
+      await setDoc(doc(db, 'residents', resident.id), resident);
+
+      // Local optimistic update
+      setResidents(prev => {
+        const filtered = prev.filter(r => r.id !== resident.id);
+        const updated = [...filtered, resident];
+        localStorage.setItem('app_residents', JSON.stringify(updated));
+        return updated;
       });
-      localStorage.setItem('app_users', JSON.stringify(users));
-      
-      resident.userId = newUid;
+    } catch (err: any) {
+      handleFirestoreError(err, OperationType.CREATE, `residents/${resident.id}`);
+      throw err;
     }
-    
-    setResidents(prev => [...prev, resident]);
   };
 
   const addPayment = async (payment: Payment) => {
     if (!currentUser) return;
-    setPayments(prev => [...prev, payment]);
+    try {
+      await setDoc(doc(db, 'payments', payment.id), payment);
+      setPayments(prev => {
+        const updated = [...prev.filter(p => p.id !== payment.id), payment];
+        localStorage.setItem('app_payments', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `payments/${payment.id}`);
+    }
   };
 
   const deletePayment = async (id: string) => {
     if (currentUser?.role !== 'admin') return;
-    setPayments(prev => prev.filter(p => p.id !== id));
+    try {
+      await deleteDoc(doc(db, 'payments', id));
+      setPayments(prev => {
+        const updated = prev.filter(p => p.id !== id);
+        localStorage.setItem('app_payments', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `payments/${id}`);
+    }
   };
 
   const addExpense = async (expense: Expense) => {
     if (currentUser?.role !== 'admin') return;
-    setExpenses(prev => [...prev, expense]);
+    try {
+      await setDoc(doc(db, 'expenses', expense.id), expense);
+      setExpenses(prev => {
+        const updated = [...prev.filter(e => e.id !== expense.id), expense];
+        localStorage.setItem('app_expenses', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `expenses/${expense.id}`);
+    }
   };
 
   const deleteExpense = async (id: string) => {
     if (currentUser?.role !== 'admin') return;
-    setExpenses(prev => prev.filter(p => p.id !== id));
+    try {
+      await deleteDoc(doc(db, 'expenses', id));
+      setExpenses(prev => {
+        const updated = prev.filter(e => e.id !== id);
+        localStorage.setItem('app_expenses', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `expenses/${id}`);
+    }
   };
 
   const updateResident = async (id: string, updatedData: Partial<Resident>, newPassword?: string) => {
     if (currentUser?.role !== 'admin') return;
 
-    setResidents(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+    try {
+      await updateDoc(doc(db, 'residents', id), updatedData);
 
-    if (newPassword) {
-      const resident = residents.find(r => r.id === id);
-      if (resident?.userId) {
-        const users = JSON.parse(localStorage.getItem('app_users') || '[]');
-        const updatedUsers = users.map((u: any) => u.uid === resident.userId ? { ...u, password: newPassword } : u);
-        localStorage.setItem('app_users', JSON.stringify(updatedUsers));
+      setResidents(prev => {
+        const updated = prev.map(r => r.id === id ? { ...r, ...updatedData } : r);
+        localStorage.setItem('app_residents', JSON.stringify(updated));
+        return updated;
+      });
+
+      if (newPassword) {
+        const resident = residents.find(r => r.id === id);
+        if (resident?.userId) {
+          await updateDoc(doc(db, 'users', resident.userId), { password: newPassword });
+        }
       }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `residents/${id}`);
     }
   };
 
   const deleteResident = async (id: string) => {
     if (currentUser?.role !== 'admin') return;
 
-    const resident = residents.find(r => r.id === id);
-    if (resident?.userId) {
-      const users = JSON.parse(localStorage.getItem('app_users') || '[]');
-      const updatedUsers = users.filter((u: any) => u.uid !== resident.userId);
-      localStorage.setItem('app_users', JSON.stringify(updatedUsers));
-    }
+    try {
+      const resident = residents.find(r => r.id === id);
+      if (resident?.userId) {
+        await deleteDoc(doc(db, 'users', resident.userId));
+      }
 
-    setResidents(prev => prev.filter(r => r.id !== id));
-    setPayments(prev => prev.filter(p => p.residentId !== id));
+      await deleteDoc(doc(db, 'residents', id));
+
+      // Remove related payments in Firestore
+      const residentPayments = payments.filter(p => p.residentId === id);
+      for (const p of residentPayments) {
+        await deleteDoc(doc(db, 'payments', p.id));
+      }
+
+      setResidents(prev => {
+        const updated = prev.filter(r => r.id !== id);
+        localStorage.setItem('app_residents', JSON.stringify(updated));
+        return updated;
+      });
+
+      setPayments(prev => {
+        const updated = prev.filter(p => p.residentId !== id);
+        localStorage.setItem('app_payments', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `residents/${id}`);
+    }
   };
 
-  const addNotification = (title: string, message: string) => {
+  const addNotification = async (title: string, message: string) => {
     const newNotif: AppNotification = {
       id: `n_${generateId()}`,
       title,
@@ -217,15 +428,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       date: new Date().toISOString(),
       read: false
     };
-    setNotifications(prev => [newNotif, ...prev]);
+
+    try {
+      await setDoc(doc(db, 'notifications', newNotif.id), newNotif);
+      setNotifications(prev => [newNotif, ...prev]);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `notifications/${newNotif.id}`);
+    }
   };
 
-  const markNotificationRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const markNotificationRead = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'notifications', id), { read: true });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `notifications/${id}`);
+    }
   };
 
-  const updateBankAccount = (newBankAccount: BankAccount) => {
-    setBankAccount(newBankAccount);
+  const updateBankAccount = async (newBankAccount: BankAccount) => {
+    try {
+      await setDoc(doc(db, 'settings', 'bankAccount'), newBankAccount);
+      setBankAccount(newBankAccount);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'settings/bankAccount');
+    }
   };
 
   const signOutUser = async () => {

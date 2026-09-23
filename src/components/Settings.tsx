@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { updatePassword, auth } from '../firebase';
+import { updatePassword, auth, db } from '../firebase';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { AlertCircle, CheckCircle2, Lock, Landmark } from 'lucide-react';
 import { useAppContext } from '../AppContext';
 
@@ -31,6 +32,21 @@ export const Settings: React.FC = () => {
     setMessage('');
 
     try {
+      // 1. Update in Cloud Firestore so all devices get the new password
+      if (currentUser.role === 'admin') {
+        await setDoc(doc(db, 'users', 'admin_uid'), {
+          uid: 'admin_uid',
+          email: 'admin',
+          password: newPassword,
+          role: 'admin'
+        }, { merge: true });
+      } else if (currentUser.uid) {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+          password: newPassword
+        });
+      }
+
+      // 2. Also update local cache
       const users = JSON.parse(localStorage.getItem('app_users') || '[]');
       const updatedUsers = users.map((u: any) => {
         if (currentUser.role === 'admin' && (u.role === 'admin' || u.email?.toLowerCase() === 'admin')) {
@@ -47,7 +63,7 @@ export const Settings: React.FC = () => {
         try {
           await updatePassword(auth.currentUser, newPassword);
         } catch {
-          // Firebase fallback
+          // Firebase auth fallback
         }
       }
 

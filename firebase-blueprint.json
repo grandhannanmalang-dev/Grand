@@ -2,11 +2,12 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "User profile with role",
+      "description": "User profile with role and credentials for cross-device authentication",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
         "email": { "type": "string" },
+        "password": { "type": "string" },
         "role": { "type": "string", "enum": ["admin", "resident"] },
         "residentId": { "type": "string" }
       },
@@ -19,40 +20,94 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "block": { "type": "string" },
+        "propertyType": { "type": "string", "enum": ["Perumahan", "Ruko"] },
         "houseNumber": { "type": "string" },
+        "block": { "type": "string" },
         "phone": { "type": "string" },
-        "joinDate": { "type": "string" }
+        "joinDate": { "type": "string" },
+        "userId": { "type": "string" },
+        "monthlyDues": { "type": "number" }
       },
-      "required": ["id", "name", "block", "houseNumber", "phone", "joinDate"]
+      "required": ["id", "name", "propertyType", "houseNumber", "joinDate"]
     },
     "Payment": {
       "title": "Payment",
-      "description": "Payment record",
+      "description": "Payment record for iuran",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "residentId": { "type": "string" },
         "amount": { "type": "number" },
-        "date": { "type": "string", "format": "date-time" },
+        "date": { "type": "string" },
+        "month": { "type": "number" },
+        "year": { "type": "number" },
+        "proofOfPayment": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified"] }
+      },
+      "required": ["id", "residentId", "amount", "date", "month", "year"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Expense record for community funds",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "date": { "type": "string" },
         "month": { "type": "number" },
         "year": { "type": "number" }
       },
-      "required": ["id", "residentId", "amount", "date", "month", "year"]
+      "required": ["id", "amount", "description", "date", "month", "year"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Community announcements and alerts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "date": { "type": "string" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["id", "title", "message", "date", "read"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Community settings including bank account details",
+      "type": "object",
+      "properties": {
+        "bankName": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "accountName": { "type": "string" }
+      }
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User" },
-      "description": "User profiles"
+      "description": "User accounts and credentials"
     },
     "/residents/{residentId}": {
       "schema": { "$ref": "#/entities/Resident" },
-      "description": "Residents in the community"
+      "description": "Residents of Grand Hannan"
     },
     "/payments/{paymentId}": {
       "schema": { "$ref": "#/entities/Payment" },
-      "description": "Payments made by residents"
+      "description": "Iuran payments made by residents"
+    },
+    "/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/Expense" },
+      "description": "Community operational expenses"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "System announcements"
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/Setting" },
+      "description": "Bank account and system settings"
     }
   }
 }

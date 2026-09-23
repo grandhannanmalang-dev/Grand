@@ -14,8 +14,8 @@ export default defineConfig(() => {
         includeAssets: ['icon.svg'],
         manifest: {
           id: '/',
-          name: 'Iuran Grand Hannan',
-          short_name: 'GH Iuran',
+          name: 'Grand Hannan',
+          short_name: 'Grand Hannan',
           description: 'Sistem Manajemen Keuangan Warga Grand Hannan.',
           theme_color: '#ffffff',
           background_color: '#ffffff',

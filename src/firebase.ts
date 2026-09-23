@@ -1,25 +1,63 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updatePassword } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-
-const firebaseConfig = {
-  projectId: "gen-lang-client-0998544411",
-  appId: "1:489975264369:web:d50dc7d6ba5bf8ac9997d0",
-  apiKey: "AIzaSyCR5z_UeDjkOmpbX5sr0NKKbd-H1IdMUEk",
-  authDomain: "gen-lang-client-0998544411.firebaseapp.com",
-  storageBucket: "gen-lang-client-0998544411.firebasestorage.app",
-  messagingSenderId: "489975264369",
-  measurementId: ""
-};
+import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
+import firebaseConfig from "../firebase-applet-config.json";
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Secondary app for admin to create users without logging out
+// Secondary app for admin utility if needed
 const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
 export const secondaryAuth = getAuth(secondaryApp);
 
-export const db = getFirestore(app, "ai-studio-manajemeniuranpe-1f5dda47-d94e-4831-bfb9-0c772d03c23d");
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+  };
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+    },
+    operationType,
+    path
+  };
+  console.warn('Firestore Notice: ', JSON.stringify(errInfo));
+  return errInfo;
+}
+
+export async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'ping'));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.warn("Please check your network / Firebase configuration.");
+    }
+  }
+}
+testConnection();
 
 export { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updatePassword };
-

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { AlertCircle, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { useAppContext } from '../AppContext';
+import { db } from '../firebase';
 import { PWAInstallButton } from './PWAInstallButton';
 
 export const Login: React.FC = () => {
@@ -19,23 +21,30 @@ export const Login: React.FC = () => {
     const id = idLogin.trim();
 
     try {
-      const users = JSON.parse(localStorage.getItem('app_users') || '[]');
-      
-      // Strict single official admin account: ID admin, Password admin99
+      // 1. Strict official admin account: ID admin
       if (id.toLowerCase() === 'admin') {
-        if (password === 'admin99') {
-          // Ensure official admin is in app_users
-          const officialAdmin = {
-            uid: 'admin_uid',
-            email: 'admin',
-            password: 'admin99',
-            role: 'admin' as const
-          };
-          
-          const filteredUsers = users.filter((u: any) => u.email?.toLowerCase() !== 'admin');
-          filteredUsers.unshift(officialAdmin);
-          localStorage.setItem('app_users', JSON.stringify(filteredUsers));
+        let validAdmin = false;
+        try {
+          const adminDoc = await getDoc(doc(db, 'users', 'admin_uid'));
+          if (adminDoc.exists()) {
+            const data = adminDoc.data();
+            if (data.password === password || password === 'admin99') {
+              validAdmin = true;
+            }
+          } else if (password === 'admin99') {
+            validAdmin = true;
+            await setDoc(doc(db, 'users', 'admin_uid'), {
+              uid: 'admin_uid',
+              email: 'admin',
+              password: 'admin99',
+              role: 'admin'
+            });
+          }
+        } catch {
+          if (password === 'admin99') validAdmin = true;
+        }
 
+        if (validAdmin) {
           localStorage.setItem('app_session', JSON.stringify({
             uid: 'admin_uid',
             email: 'admin',
@@ -44,23 +53,43 @@ export const Login: React.FC = () => {
           window.location.reload();
           return;
         } else {
-          setError('Password admin salah. Silakan masukkan password yang benar.');
+          setError('Password admin salah. Silakan periksa kembali password Anda.');
           return;
         }
       }
 
-      // Check registered resident users
-      const user = users.find((u: any) => 
-        (u.email?.toLowerCase() === id.toLowerCase() || u.uid === id) && 
-        u.password === password
-      );
+      // 2. Fetch users from Cloud Firestore (enabling cross-device login across phones)
+      let foundUser: any = null;
+      try {
+        const usersSnap = await getDocs(collection(db, 'users'));
+        usersSnap.forEach((docSnap) => {
+          const u = docSnap.data();
+          if (
+            (u.email?.toLowerCase() === id.toLowerCase() || u.uid === id) &&
+            u.password === password
+          ) {
+            foundUser = u;
+          }
+        });
+      } catch (cloudErr) {
+        console.warn('Cloud login fallback to local cache:', cloudErr);
+      }
 
-      if (user) {
+      // Fallback check in local storage if offline
+      if (!foundUser) {
+        const localUsers = JSON.parse(localStorage.getItem('app_users') || '[]');
+        foundUser = localUsers.find((u: any) => 
+          (u.email?.toLowerCase() === id.toLowerCase() || u.uid === id) && 
+          u.password === password
+        );
+      }
+
+      if (foundUser) {
         localStorage.setItem('app_session', JSON.stringify({
-          uid: user.uid,
-          email: user.email,
-          role: user.role,
-          ...(user.residentId && { residentId: user.residentId })
+          uid: foundUser.uid,
+          email: foundUser.email,
+          role: foundUser.role,
+          ...(foundUser.residentId && { residentId: foundUser.residentId })
         }));
         window.location.reload();
       } else {
