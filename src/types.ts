@@ -3,6 +3,7 @@ export interface Resident {
   name: string;
   propertyType: 'Perumahan' | 'Ruko';
   houseNumber: string;
+  block?: string;
   phone?: string;
   joinDate: string;
   userId?: string;

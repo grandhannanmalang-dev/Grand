@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Resident, Payment, AppUser, AppNotification, Expense, BankAccount } from './types';
+import { initialResidents, initialPayments } from './data';
 import { generateId } from './utils';
 
 interface AppContextType {
@@ -42,23 +43,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Load initial data
   useEffect(() => {
     const loadData = () => {
+      // 1. Enforce only 1 official admin account: ID: admin, Password: admin99
       const storedUsers = localStorage.getItem('app_users');
-      if (!storedUsers) {
-        // Initialize with default admin if not exists
-        const defaultAdmin = {
-          uid: 'admin_uid',
-          email: 'admin',
-          password: 'admin99',
-          role: 'admin' as const
-        };
-        localStorage.setItem('app_users', JSON.stringify([defaultAdmin]));
+      let usersList: any[] = [];
+      try {
+        usersList = storedUsers ? JSON.parse(storedUsers) : [];
+      } catch {
+        usersList = [];
       }
 
-      const storedResidents = localStorage.getItem('app_residents');
-      if (storedResidents) setResidents(JSON.parse(storedResidents));
+      // Keep only resident accounts and replace any admin with the ONE official admin
+      const nonAdminUsers = usersList.filter((u: any) => u.role !== 'admin' && u.email?.toLowerCase() !== 'admin');
+      const officialAdmin = {
+        uid: 'admin_uid',
+        email: 'admin',
+        password: 'admin99',
+        role: 'admin' as const
+      };
+      
+      const finalizedUsers = [officialAdmin, ...nonAdminUsers];
+      localStorage.setItem('app_users', JSON.stringify(finalizedUsers));
 
+      // 2. Load Residents
+      const storedResidents = localStorage.getItem('app_residents');
+      if (storedResidents) {
+        setResidents(JSON.parse(storedResidents));
+      } else {
+        setResidents(initialResidents);
+        localStorage.setItem('app_residents', JSON.stringify(initialResidents));
+      }
+
+      // 3. Load Payments
       const storedPayments = localStorage.getItem('app_payments');
-      if (storedPayments) setPayments(JSON.parse(storedPayments));
+      if (storedPayments) {
+        setPayments(JSON.parse(storedPayments));
+      } else {
+        setPayments(initialPayments);
+        localStorage.setItem('app_payments', JSON.stringify(initialPayments));
+      }
 
       const storedExpenses = localStorage.getItem('app_expenses');
       if (storedExpenses) setExpenses(JSON.parse(storedExpenses));

@@ -20,7 +20,40 @@ export const Login: React.FC = () => {
 
     try {
       const users = JSON.parse(localStorage.getItem('app_users') || '[]');
-      const user = users.find((u: any) => u.email === id && u.password === password);
+      
+      // Strict single official admin account: ID admin, Password admin99
+      if (id.toLowerCase() === 'admin') {
+        if (password === 'admin99') {
+          // Ensure official admin is in app_users
+          const officialAdmin = {
+            uid: 'admin_uid',
+            email: 'admin',
+            password: 'admin99',
+            role: 'admin' as const
+          };
+          
+          const filteredUsers = users.filter((u: any) => u.email?.toLowerCase() !== 'admin');
+          filteredUsers.unshift(officialAdmin);
+          localStorage.setItem('app_users', JSON.stringify(filteredUsers));
+
+          localStorage.setItem('app_session', JSON.stringify({
+            uid: 'admin_uid',
+            email: 'admin',
+            role: 'admin'
+          }));
+          window.location.reload();
+          return;
+        } else {
+          setError('Password admin salah. Silakan masukkan password yang benar.');
+          return;
+        }
+      }
+
+      // Check registered resident users
+      const user = users.find((u: any) => 
+        (u.email?.toLowerCase() === id.toLowerCase() || u.uid === id) && 
+        u.password === password
+      );
 
       if (user) {
         localStorage.setItem('app_session', JSON.stringify({
@@ -29,10 +62,9 @@ export const Login: React.FC = () => {
           role: user.role,
           ...(user.residentId && { residentId: user.residentId })
         }));
-        // Force reload to update context
         window.location.reload();
       } else {
-        setError('ID Pengguna atau Password salah.');
+        setError('ID Pengguna atau Password salah. Silakan periksa kembali data Anda.');
       }
     } catch (err: any) {
       setError('Gagal login: ' + err.message);

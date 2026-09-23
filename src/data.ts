@@ -1,14 +1,14 @@
 import { Resident, Payment } from './types';
 
 export const initialResidents: Resident[] = [
-  { id: 'r1', name: 'Budi Santoso', block: 'A', houseNumber: '01', phone: '081234567890', joinDate: '2023-01-15' },
-  { id: 'r2', name: 'Siti Aminah', block: 'A', houseNumber: '02', phone: '081234567891', joinDate: '2023-02-10' },
-  { id: 'r3', name: 'Andi Wijaya', block: 'B', houseNumber: '01', phone: '081234567892', joinDate: '2023-03-05' },
-  { id: 'r4', name: 'Dewi Lestari', block: 'B', houseNumber: '02', phone: '081234567893', joinDate: '2023-04-20' },
-  { id: 'r5', name: 'Reza Rahardian', block: 'C', houseNumber: '05', phone: '081234567894', joinDate: '2023-05-12' },
-  { id: 'r6', name: 'Maya Sari', block: 'C', houseNumber: '06', phone: '081234567895', joinDate: '2023-06-08' },
-  { id: 'r7', name: 'Hendra Gunawan', block: 'D', houseNumber: '10', phone: '081234567896', joinDate: '2023-07-22' },
-  { id: 'r8', name: 'Nina Zatulini', block: 'D', houseNumber: '11', phone: '081234567897', joinDate: '2023-08-30' },
+  { id: 'r1', name: 'Budi Santoso', propertyType: 'Perumahan', block: 'A', houseNumber: '01', phone: '081234567890', joinDate: '2023-01-15' },
+  { id: 'r2', name: 'Siti Aminah', propertyType: 'Perumahan', block: 'A', houseNumber: '02', phone: '081234567891', joinDate: '2023-02-10' },
+  { id: 'r3', name: 'Andi Wijaya', propertyType: 'Perumahan', block: 'B', houseNumber: '01', phone: '081234567892', joinDate: '2023-03-05' },
+  { id: 'r4', name: 'Dewi Lestari', propertyType: 'Perumahan', block: 'B', houseNumber: '02', phone: '081234567893', joinDate: '2023-04-20' },
+  { id: 'r5', name: 'Reza Rahardian', propertyType: 'Perumahan', block: 'C', houseNumber: '05', phone: '081234567894', joinDate: '2023-05-12' },
+  { id: 'r6', name: 'Maya Sari', propertyType: 'Perumahan', block: 'C', houseNumber: '06', phone: '081234567895', joinDate: '2023-06-08' },
+  { id: 'r7', name: 'Hendra Gunawan', propertyType: 'Perumahan', block: 'D', houseNumber: '10', phone: '081234567896', joinDate: '2023-07-22' },
+  { id: 'r8', name: 'Nina Zatulini', propertyType: 'Perumahan', block: 'D', houseNumber: '11', phone: '081234567897', joinDate: '2023-08-30' },
 ];
 
 const generateInitialPayments = (): Payment[] => {
