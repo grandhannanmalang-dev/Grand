@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import { useAppContext } from '../AppContext';
 import { formatIDR, getMonthName, generateId } from '../utils';
-import { Wallet, Users, AlertCircle, CheckCircle2, XCircle, Upload, Loader2, Building2 } from 'lucide-react';
+import { Wallet, Users, AlertCircle, CheckCircle2, XCircle, Upload, Loader2, Building2, Bell } from 'lucide-react';
 import { Payment } from '../types';
 
 export const Dashboard: React.FC = () => {
@@ -38,14 +38,27 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-display font-semibold text-slate-900">Dashboard</h1>
-        <p className="text-slate-500 mt-1">
-          {currentUser?.role === 'resident' && resident 
-            ? `Halo, ${resident.name} - Ringkasan Tagihan Anda`
-            : `Ringkasan iuran bulan ${getMonthName(currentMonth)} ${currentYear}`
-          }
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-display font-semibold text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 mt-1">
+            {currentUser?.role === 'resident' && resident 
+              ? `Halo, ${resident.name} - Ringkasan Tagihan Anda`
+              : `Ringkasan iuran bulan ${getMonthName(currentMonth)} ${currentYear}`
+            }
+          </p>
+        </div>
+
+        {currentUser?.role === 'admin' && (
+          <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200/80 px-4 py-2 rounded-xl text-emerald-800 text-xs font-medium self-start md:self-auto">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <Bell className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Pengingat Otomatis Tanggal 1 Aktif</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

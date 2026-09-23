@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../AppContext';
 import { getMonthName, formatIDR, generateId } from '../utils';
-import { CheckCircle2, XCircle, Upload, Image as ImageIcon, Send, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Upload, Image as ImageIcon, Send, Loader2, Bell, Calendar } from 'lucide-react';
 import { Payment } from '../types';
 
 export const ResidentDashboard: React.FC = () => {
@@ -97,6 +97,40 @@ export const ResidentDashboard: React.FC = () => {
         <h1 className="text-2xl font-display font-semibold text-slate-900">Halo, {resident.name}</h1>
         <p className="text-slate-500 mt-1">Dashboard Tagihan Iuran Warga</p>
       </div>
+
+      {/* Pengingat Pembayaran Rutin Tanggal 1 */}
+      {!myPayments.some(p => p.month === currentMonth && p.year === currentYear) ? (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5 shadow-sm">
+              <Bell className="w-5 h-5 animate-bounce" />
+            </div>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-200/80 text-amber-900 uppercase tracking-wider">
+                  Pengingat Tanggal 1
+                </span>
+                <span className="text-xs text-amber-800 font-medium">
+                  Periode {getMonthName(currentMonth)} {currentYear}
+                </span>
+              </div>
+              <h3 className="font-semibold text-slate-900 text-base mt-1.5">
+                Jadwal Pembayaran Iuran Bulanan Warga
+              </h3>
+              <p className="text-sm text-slate-600 mt-1 leading-relaxed">
+                Setiap <strong>tanggal 1 di awal bulan</strong> adalah jadwal dimulainya pembayaran iuran warga Grand Hannan. Status iuran Anda bulan ini masih <strong>Belum Bayar</strong>. Mohon transfer ke rekening paguyuban dan unggah foto bukti transfer di bawah.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <p className="text-sm text-emerald-800 font-medium">
+            Terima kasih! Iuran bulan <strong>{getMonthName(currentMonth)} {currentYear}</strong> Anda telah tercatat lunas.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Info Warga */}

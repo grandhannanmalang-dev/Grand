@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 import { Resident, Payment, AppUser, AppNotification, Expense, BankAccount } from './types';
 import { initialResidents, initialPayments } from './data';
-import { generateId } from './utils';
+import { generateId, getMonthName } from './utils';
 import { db, handleFirestoreError, OperationType } from './firebase';
 
 interface AppContextType {
@@ -152,6 +152,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             accountNumber: '1234 5678 90',
             accountName: 'Paguyuban Grand Hannan'
           });
+        }
+
+        // 5. Automated 1st of the Month Payment Reminder Notification
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth() + 1; // 1 to 12
+        const reminderId = `reminder_iuran_${curYear}_${curMonth}`;
+        const reminderRef = doc(db, 'notifications', reminderId);
+        const reminderSnap = await getDoc(reminderRef);
+
+        if (!reminderSnap.exists()) {
+          const monthName = getMonthName(curMonth);
+          const reminderNotif: AppNotification = {
+            id: reminderId,
+            title: `Pengingat Pembayaran Iuran Bulan ${monthName} ${curYear}`,
+            message: `Halo Warga Grand Hannan, setiap tanggal 1 adalah jadwal dimulainya pembayaran iuran bulanan periode ${monthName} ${curYear}. Mohon segera lakukan pembayaran transfer ke rekening paguyuban dan unggah bukti transfer. Terima kasih atas kerja samanya!`,
+            date: new Date(curYear, curMonth - 1, 1, 7, 0, 0).toISOString(),
+            read: false
+          };
+          await setDoc(reminderRef, reminderNotif);
+        }
+
+        // Web Notification prompt & push if supported
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+          if (Notification.permission === 'granted') {
+            const notifiedKey = `app_notified_due_${curYear}_${curMonth}`;
+            if (!localStorage.getItem(notifiedKey)) {
+              try {
+                const monthName = getMonthName(curMonth);
+                new Notification(`Grand Hannan - Pengingat Iuran Tanggal 1`, {
+                  body: `Periode iuran bulan ${monthName} ${curYear} telah dibuka. Mohon selesaikan pembayaran tepat waktu.`,
+                  icon: '/icon.svg'
+                });
+                localStorage.setItem(notifiedKey, 'true');
+              } catch (notifErr) {
+                console.warn('Browser notification error:', notifErr);
+              }
+            }
+          }
         }
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, 'init_seed');
