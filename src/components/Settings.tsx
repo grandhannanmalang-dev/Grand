@@ -3,6 +3,7 @@ import { updatePassword, auth, db } from '../firebase';
 import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { AlertCircle, CheckCircle2, Lock, Landmark } from 'lucide-react';
 import { useAppContext } from '../AppContext';
+import { BankCard } from './BankCard';
 
 export const Settings: React.FC = () => {
   const { currentUser, bankAccount, updateBankAccount } = useAppContext();
@@ -149,57 +150,76 @@ export const Settings: React.FC = () => {
             <h2 className="text-lg font-display font-semibold text-slate-900">Rekening Pembayaran</h2>
           </div>
 
-          <form onSubmit={handleUpdateBank} className="space-y-5 max-w-md">
-            {bankMessage && (
-              <div className="flex items-start gap-3 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm">
-                <CheckCircle2 className="w-5 h-5 shrink-0" />
-                <p>{bankMessage}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <form onSubmit={handleUpdateBank} className="space-y-5 max-w-md">
+              {bankMessage && (
+                <div className="flex items-start gap-3 p-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm">
+                  <CheckCircle2 className="w-5 h-5 shrink-0" />
+                  <p>{bankMessage}</p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nama Bank</label>
+                <input 
+                  required
+                  type="text"
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  placeholder="Misal: BCA, Mandiri"
+                />
               </div>
-            )}
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nomor Rekening</label>
+                <input 
+                  required
+                  type="text"
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  placeholder="Misal: 1234 5678 90"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nama Bank</label>
-              <input 
-                required
-                type="text"
-                value={bankName}
-                onChange={(e) => setBankName(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                placeholder="Misal: BCA, Mandiri"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nomor Rekening</label>
-              <input 
-                required
-                type="text"
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                placeholder="Misal: 1234 5678 90"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Atas Nama</label>
+                <input 
+                  required
+                  type="text"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  placeholder="Misal: Paguyuban Grand Hannan"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Atas Nama</label>
-              <input 
-                required
-                type="text"
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                placeholder="Misal: Paguyuban Grand Hannan"
-              />
-            </div>
+              <button 
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+              >
+                Simpan Rekening
+              </button>
+            </form>
 
-            <button 
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
-            >
-              Simpan Rekening
-            </button>
-          </form>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Pratinjau Tampilan & Fitur Salin Rekening Warga:
+              </label>
+              <BankCard 
+                bankAccount={{
+                  bankName: bankName || 'BCA',
+                  accountNumber: accountNumber || '1234 5678 90',
+                  accountName: accountName || 'Paguyuban Grand Hannan'
+                }}
+                nominal={150000}
+              />
+              <p className="text-xs text-slate-500">
+                Warga dapat menyalin nomor rekening dan nominal iuran dengan 1 klik untuk langsung di-paste ke aplikasi mobile banking (BCA Mobile, Mandiri Livin, BRImo, dll).
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>

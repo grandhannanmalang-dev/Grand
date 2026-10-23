@@ -3,6 +3,7 @@ import { useAppContext } from '../AppContext';
 import { getMonthName, formatIDR, generateId } from '../utils';
 import { CheckCircle2, XCircle, Upload, Image as ImageIcon, Send, Loader2, Bell, Calendar } from 'lucide-react';
 import { Payment } from '../types';
+import { BankCard } from './BankCard';
 
 export const ResidentDashboard: React.FC = () => {
   const { currentUser, residents, payments, addPayment, addNotification, bankAccount } = useAppContext();
@@ -164,12 +165,11 @@ export const ResidentDashboard: React.FC = () => {
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Bayar Iuran (Upload Bukti)</h2>
           <div className="space-y-4">
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 mb-4">
-              <p className="text-sm text-slate-500 mb-1">Transfer ke Rekening Pengurus:</p>
-              <p className="font-semibold text-slate-900 text-lg">{bankAccount.bankName} - {bankAccount.accountNumber}</p>
-              <p className="text-sm font-medium text-slate-700">a.n. {bankAccount.accountName}</p>
-              <p className="text-sm text-slate-500 mt-2">Nominal tagihan bulanan: <strong className="text-slate-900">Rp {(resident.monthlyDues || 150000).toLocaleString('id-ID')}</strong></p>
-            </div>
+            <BankCard 
+              bankAccount={bankAccount} 
+              nominal={resident.monthlyDues || 150000} 
+              className="mb-4"
+            />
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Bulan</label>

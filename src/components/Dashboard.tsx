@@ -4,9 +4,10 @@ import { useAppContext } from '../AppContext';
 import { formatIDR, getMonthName, generateId } from '../utils';
 import { Wallet, Users, AlertCircle, CheckCircle2, XCircle, Upload, Loader2, Building2, Bell } from 'lucide-react';
 import { Payment } from '../types';
+import { BankCard } from './BankCard';
 
 export const Dashboard: React.FC = () => {
-  const { currentUser, residents, payments, addPayment, addNotification } = useAppContext();
+  const { currentUser, residents, payments, addPayment, addNotification, bankAccount } = useAppContext();
   
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
@@ -154,6 +155,19 @@ export const Dashboard: React.FC = () => {
           </>
         )}
       </div>
+
+      {currentUser?.role === 'resident' && !myVerifiedPayments.some(p => p.month === currentMonth && p.year === currentYear) && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-slate-900">Rekening Tujuan Pembayaran Iuran</h2>
+            <span className="text-xs text-slate-500 font-medium">Periode {getMonthName(currentMonth)} {currentYear}</span>
+          </div>
+          <BankCard 
+            bankAccount={bankAccount} 
+            nominal={resident?.monthlyDues || 150000} 
+          />
+        </div>
+      )}
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">

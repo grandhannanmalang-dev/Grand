@@ -102,6 +102,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, onSettingsClick }) 
                           {!notif.read && <span className="w-2 h-2 bg-emerald-500 rounded-full mt-1.5 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>}
                         </div>
                         <p className="text-xs text-slate-600 leading-snug">{notif.message}</p>
+
                         <p className="text-[10px] text-slate-400 mt-2">
                           {new Date(notif.date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
                         </p>
