@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 import { Resident, Payment, AppUser, AppNotification, Expense, BankAccount } from './types';
 import { initialResidents, initialPayments } from './data';
-import { generateId, getMonthName } from './utils';
+import { generateId, getMonthName, cleanFirestoreData } from './utils';
 import { db, handleFirestoreError, OperationType } from './firebase';
 
 interface AppContextType {
@@ -23,6 +23,7 @@ interface AppContextType {
   expenses: Expense[];
   addResident: (resident: Resident, idLogin?: string, password?: string) => Promise<void>;
   addPayment: (payment: Payment) => Promise<void>;
+  updatePayment: (id: string, updatedData: Partial<Payment>) => Promise<void>;
   deletePayment: (id: string) => Promise<void>;
   addExpense: (expense: Expense) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
@@ -206,11 +207,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubResidents = onSnapshot(
       collection(db, 'residents'),
       (snapshot) => {
-        if (!snapshot.empty) {
-          const cloudResidents: Resident[] = [];
-          snapshot.forEach((d) => {
-            cloudResidents.push(d.data() as Resident);
-          });
+        const cloudResidents: Resident[] = [];
+        snapshot.forEach((d) => {
+          cloudResidents.push({ id: d.id, ...d.data() } as Resident);
+        });
+        if (cloudResidents.length > 0) {
           setResidents(cloudResidents);
           localStorage.setItem('app_residents', JSON.stringify(cloudResidents));
         }
@@ -220,18 +221,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     );
 
-    // 2. Listen to Payments
+    // 2. Listen to Payments (Instantly streams payments created by residents to admin)
     const unsubPayments = onSnapshot(
       collection(db, 'payments'),
       (snapshot) => {
-        if (!snapshot.empty) {
-          const cloudPayments: Payment[] = [];
-          snapshot.forEach((d) => {
-            cloudPayments.push(d.data() as Payment);
-          });
-          setPayments(cloudPayments);
-          localStorage.setItem('app_payments', JSON.stringify(cloudPayments));
-        }
+        const cloudPayments: Payment[] = [];
+        snapshot.forEach((d) => {
+          cloudPayments.push({ id: d.id, ...d.data() } as Payment);
+        });
+        setPayments(cloudPayments);
+        localStorage.setItem('app_payments', JSON.stringify(cloudPayments));
       },
       (error) => {
         handleFirestoreError(error, OperationType.LIST, 'payments');
@@ -348,16 +347,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addPayment = async (payment: Payment) => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      throw new Error("Sesi pengguna tidak valid. Silakan login terlebih dahulu.");
+    }
+
+    const cleanPayload = cleanFirestoreData({
+      id: payment.id,
+      residentId: payment.residentId,
+      amount: Number(payment.amount),
+      month: Number(payment.month),
+      year: Number(payment.year),
+      date: payment.date || new Date().toISOString(),
+      status: payment.status || 'pending',
+      ...(payment.proofOfPayment ? { proofOfPayment: payment.proofOfPayment } : {})
+    });
+
     try {
-      await setDoc(doc(db, 'payments', payment.id), payment);
+      await setDoc(doc(db, 'payments', payment.id), cleanPayload);
       setPayments(prev => {
-        const updated = [...prev.filter(p => p.id !== payment.id), payment];
+        const updated = [cleanPayload as Payment, ...prev.filter(p => p.id !== payment.id)];
         localStorage.setItem('app_payments', JSON.stringify(updated));
         return updated;
       });
-    } catch (err) {
+    } catch (err: any) {
       handleFirestoreError(err, OperationType.CREATE, `payments/${payment.id}`);
+      throw err;
+    }
+  };
+
+  const updatePayment = async (id: string, updatedData: Partial<Payment>) => {
+    if (currentUser?.role !== 'admin') return;
+    try {
+      const cleanData = cleanFirestoreData(updatedData);
+      await updateDoc(doc(db, 'payments', id), cleanData);
+      setPayments(prev => {
+        const updated = prev.map(p => p.id === id ? { ...p, ...cleanData } : p);
+        localStorage.setItem('app_payments', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (err: any) {
+      handleFirestoreError(err, OperationType.UPDATE, `payments/${id}`);
+      throw err;
     }
   };
 
@@ -511,6 +541,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateResident,
       deleteResident,
       addPayment, 
+      updatePayment,
       deletePayment,
       addExpense,
       deleteExpense,

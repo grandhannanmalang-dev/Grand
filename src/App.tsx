@@ -32,12 +32,12 @@ function MainApp() {
 
   const renderView = () => {
     switch (currentView) {
-      case 'dashboard': return <Dashboard />;
+      case 'dashboard': return <Dashboard onNavigateToPayments={() => setCurrentView('payments')} />;
       case 'residents': return <Residents />;
       case 'payments': return currentUser.role === 'admin' ? <Payments /> : <ResidentDashboard />;
       case 'reports': return <Reports />;
       case 'settings': return <Settings />;
-      default: return <Dashboard />;
+      default: return <Dashboard onNavigateToPayments={() => setCurrentView('payments')} />;
     }
   };
 

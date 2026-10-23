@@ -19,7 +19,8 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isOpen, onClose }) => {
-  const { currentUser } = useAppContext();
+  const { currentUser, payments } = useAppContext();
+  const pendingCount = payments.filter(p => p.status === 'pending').length;
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -84,6 +85,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
                   )}
                   <Icon className={cn("w-5 h-5 relative z-10 transition-transform group-hover:scale-110", isActive ? "text-white" : "text-slate-400")} />
                   <span className="relative z-10">{item.label}</span>
+                  {item.id === 'payments' && currentUser?.role === 'admin' && pendingCount > 0 && (
+                    <span className={cn(
+                      "ml-auto relative z-10 px-2 py-0.5 rounded-full text-[11px] font-bold shadow-xs",
+                      isActive ? "bg-white text-emerald-700" : "bg-amber-500 text-white"
+                    )}>
+                      {pendingCount}
+                    </span>
+                  )}
                 </motion.button>
               );
             })}

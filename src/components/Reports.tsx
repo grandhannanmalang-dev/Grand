@@ -33,7 +33,7 @@ export const Reports: React.FC = () => {
       targetYear -= 1;
     }
 
-    const monthPayments = payments.filter(p => p.month === targetMonth && p.year === targetYear && p.status === 'verified');
+    const monthPayments = payments.filter(p => Number(p.month) === targetMonth && Number(p.year) === targetYear && p.status === 'verified');
     const totalCollected = monthPayments.reduce((sum, p) => sum + p.amount, 0);
 
     chartData.push({
@@ -50,7 +50,7 @@ export const Reports: React.FC = () => {
   const totalExpensesAllTime = expenses.reduce((sum, e) => sum + e.amount, 0);
   const currentBalance = totalCollectedAllTime - totalExpensesAllTime;
 
-  const currentYearPayments = verifiedPayments.filter(p => p.year === currentYear);
+  const currentYearPayments = verifiedPayments.filter(p => Number(p.year) === currentYear);
   const totalYearCollected = currentYearPayments.reduce((sum, p) => sum + p.amount, 0);
 
   const [isExpenseModalOpen, setIsExpenseModalOpen] = React.useState(false);

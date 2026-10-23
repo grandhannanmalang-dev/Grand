@@ -6,11 +6,17 @@ import { Wallet, Users, AlertCircle, CheckCircle2, XCircle, Upload, Loader2, Bui
 import { Payment } from '../types';
 import { BankCard } from './BankCard';
 
-export const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onNavigateToPayments?: () => void;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToPayments }) => {
   const { currentUser, residents, payments, addPayment, addNotification, bankAccount } = useAppContext();
   
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
+
+  const pendingPayments = payments.filter(p => p.status === 'pending');
 
   // Statistics (for Admin and general view)
   const currentMonthPayments = payments.filter(p => p.month === currentMonth && p.year === currentYear);
@@ -61,6 +67,39 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Admin Action Alert: Pending Resident Payments Awaiting Verification */}
+      {currentUser?.role === 'admin' && pendingPayments.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-amber-500 text-white rounded-xl shrink-0 shadow-sm">
+              <AlertCircle className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 uppercase tracking-wider">
+                  Perlu Tindakan
+                </span>
+                <span className="text-xs text-amber-800 font-semibold">
+                  {pendingPayments.length} Pembayaran Masuk
+                </span>
+              </div>
+              <h3 className="font-semibold text-slate-900 text-base mt-1">
+                Bukti Pembayaran Warga Menunggu Verifikasi
+              </h3>
+              <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                Warga telah mengunggah bukti transfer iuran. Silakan periksa foto bukti dan konfirmasi pembayaran agar tercatat lunas.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onNavigateToPayments}
+            className="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl transition-colors shadow-xs shrink-0 text-center cursor-pointer"
+          >
+            Verifikasi Sekarang ({pendingPayments.length})
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {currentUser?.role === 'resident' ? (
@@ -204,9 +243,16 @@ export const Dashboard: React.FC = () => {
                         {resident?.propertyType || 'Perumahan'} - {resident?.houseNumber}
                       </td>
                       <td className="px-6 py-4 text-slate-600">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                          {getMonthName(payment.month)} {payment.year}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                            {getMonthName(payment.month)} {payment.year}
+                          </span>
+                          {payment.status === 'pending' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              Pending
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-slate-900 font-medium text-right">
                         {formatIDR(payment.amount)}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useAppContext } from '../AppContext';
-import { Plus, Search, CheckCircle2, XCircle, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Search, CheckCircle2, XCircle, Trash2, Edit2, AlertCircle } from 'lucide-react';
 import { generateId, getMonthName } from '../utils';
 import { Resident } from '../types';
 import { cn } from './Sidebar'; // Reusing cn utility
@@ -180,18 +180,26 @@ export const Residents: React.FC = () => {
                       
                       {Array.from({ length: 12 }, (_, i) => {
                         const month = i + 1;
-                        const hasPaidThisMonth = payments.some(
-                          p => p.residentId === resident.id && p.month === month && p.year === selectedYear && p.status === 'verified'
+                        const paymentThisMonth = payments.find(
+                          p => p.residentId === resident.id && Number(p.month) === month && Number(p.year) === selectedYear
                         );
                         
                         return (
                           <td key={month} className="px-1 py-2 text-center border-r border-slate-50 last:border-r-0">
-                            {hasPaidThisMonth ? (
-                              <div className="flex justify-center" title={`Lunas - Bulan ${month} ${selectedYear}`}>
-                                <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center">
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            {paymentThisMonth ? (
+                              paymentThisMonth.status === 'pending' ? (
+                                <div className="flex justify-center" title={`Menunggu Verifikasi Bukti - Bulan ${month} ${selectedYear}`}>
+                                  <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center">
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                                  </div>
                                 </div>
-                              </div>
+                              ) : (
+                                <div className="flex justify-center" title={`Lunas - Bulan ${month} ${selectedYear}`}>
+                                  <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                  </div>
+                                </div>
+                              )
                             ) : (
                               <div className="flex justify-center" title={`Belum Lunas - Bulan ${month} ${selectedYear}`}>
                                 <div className="w-6 h-6 rounded-full bg-rose-50/50 flex items-center justify-center">
